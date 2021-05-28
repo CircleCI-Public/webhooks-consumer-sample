@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css"
+        integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
+
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.0/axios.min.js"
+        integrity="sha512-DZqqY3PiOvTP9HkjIWgjO6ouCbq+dxqWoJZ/Q+zPYNHmlnI2dQnbJ5bxAHpAMw+LXRm4D72EIRXzvcHQtE8/VQ=="
+        crossorigin="anonymous"></script>
+    <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+
+    <title>Recent Workflows Dashboard</title>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="/#">Recent workflows dashboard</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarText"
+            aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon" />
+        </button>
+
+    </nav>
+    <div id="app">
+
+
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <div v-if="selectedProject.reponame">
+                        <h2>Workflows <span class="text-primary">[{{selectedProject.reponame}}]</span></h2>
+
+                        <p v-if="!workflows.length">
+                            <i>Waiting for pipelines</i>
+                        </p>
+
+                        <div v-else class="list-group" id="workflows-section">
+                            <div v-for="workflow in workflows" class="list-group-item list-group-item-action">
+                                <div class="w-100">
+
+                                    <h5>
+                                        Workflow: {{workflow.workflow.name}} <br />
+                                        <span v-if="workflow.workflow.status !== 'success'"
+                                            class="text-danger">{{workflow.workflow.status}}</span>
+                                        <span v-else class="text-success">{{workflow.workflow.status}}</span>
+
+                                    </h5>
+                                    <br />
+                                    Happened at: {{workflow.happened_at}}<br />
+                                    ID: {{workflow.workflow.id}} <br />
+
+
+                                    Pipeline: {{ workflow.pipeline.number }} <br />
+
+                                    <a v-bind:href="workflow.workflow.url" target="_blank"
+                                        rel="noopener noreferrer">View in CircleCI dashboard</a>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        var app = new Vue({
+            el: '#app',
+            data: {
+
+                selectedProject: {
+                    vcs_type: "gh",
+                    username: 'zmarkan',
+                    reponame: 'very-simple-non-app'
+                },
+                loadingPipelines: true,
+                workflows: [],
+            },
+            async created() {
+                console.log("Getting things ready")
+                const pusher = new Pusher('3ad5dab74e212a6a3009', {
+                    cluster: 'eu'
+                });
+
+                const channel = pusher.subscribe('workflow-updates');
+                channel.bind('workflow-completed', (data) => {
+                    this.addPipelineItem(data)
+                    console.log(data)
+                });
+                console.log("Bound to websocket")
+
+                let workflows = await axios.get(`getworkflows`)
+                this.workflows = workflows.data
+                console.log(this.workflows)
+            },
+
+            methods: {
+                addPipelineItem: async function (pipeline) {
+                    console.log("Add workflow")
+                    console.log(this.workflows)
+                    this.workflows.unshift(pipeline)
+                    console.log(this.workflows)
+                },
+            }
+        })
+
+
+
+    </script>
+
+    <style>
+        #app {
+            margin-top: 50px;
+        }
+
+        #projects-section,
+        #pipelines-section {
+            height: 600px;
+            overflow: scroll;
+        }
+    </style>
+</body>
+
+</html>

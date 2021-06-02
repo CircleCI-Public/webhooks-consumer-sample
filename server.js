@@ -5,7 +5,7 @@ const app = express();
 const cors = require('cors');
 const axios = require("axios");
 const Pusher = require('pusher')
-
+const crypto = require("crypto")
 
 
 app.use(cors());
@@ -29,16 +29,29 @@ axios.defaults.headers.common['Circle-Token'] = process.env.API_KEY;
 const workflow_events = []
 
 const handleWebhook = async (req, res) => {
-    console.log("WEBHOOK")
+    console.log("WEBHOOK RECEIVED")
     console.log(req.headers)
-    console.log(req.body)
 
     let payload = req.body
+    console.log(payload)
 
-    await pusher.trigger("workflow-updates", "workflow-completed", payload)
-    workflow_events.unshift(payload)
+    // Check signature to verify authenticity of webhook payload
+    // Sample signature: 'circleci-signature': 'v1=281d91d308ef7a7e8bd7c7606353d5a2dd8d7c5f01143a98c1e8083e04f861ba',
+    let signature = req.headers["circleci-signature"].substring(3)
+    const key = "super-secret-1234" // Same string as used in webhook setup
+    let testDigest = crypto.createHmac('sha256', key).update(JSON.stringify(payload)).digest('hex')
 
+    if (testDigest !== crypto.sign) {
+        console.log("Webhook signature not matching")
+        console.log(`Signature: ${signature}`)
+        console.log(`Test digest: ${testDigest}`)
+        res.status(403).send("Invalid signature")
+    }
+
+    console.log("Webhook signature and test digest are matching.")
     
+    await pusher.trigger("workflow-updates", "workflow-completed", payload)
+    workflow_events.unshift(payload)    
     res.send()
 }
 

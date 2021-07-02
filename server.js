@@ -7,7 +7,6 @@ const axios = require("axios");
 const Pusher = require('pusher')
 const crypto = require("crypto")
 
-
 app.use(cors());
 
 app.use(express.urlencoded({ extended: false }));
@@ -33,7 +32,7 @@ const handleWebhook = async (req, res) => {
     console.log(req.headers)
 
     let payload = req.body
-    console.log(payload)
+    console.log(JSON.stringify(payload))
 
     // Check signature to verify authenticity of webhook payload
     // Sample signature: 'circleci-signature': 'v1=281d91d308ef7a7e8bd7c7606353d5a2dd8d7c5f01143a98c1e8083e04f861ba',
@@ -41,7 +40,7 @@ const handleWebhook = async (req, res) => {
     const key = "super-secret-1234" // Same string as used in webhook setup
     let testDigest = crypto.createHmac('sha256', key).update(JSON.stringify(payload)).digest('hex')
 
-    if (testDigest !== crypto.sign) {
+    if (testDigest !== signature) {
         console.log("Webhook signature not matching")
         console.log(`Signature: ${signature}`)
         console.log(`Test digest: ${testDigest}`)
@@ -56,6 +55,7 @@ const handleWebhook = async (req, res) => {
 }
 
 app.post("/cci-webhook", handleWebhook)
+app.post("/", handleWebhook)
 
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname+'/index.html'));
